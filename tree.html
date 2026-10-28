@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ツリーで投稿</title>
+<style>
+  :root { --bg:#fff; --fg:#111; --sub:#666; --line:#ddd; --btn:#111; --btnfg:#fff; --ok:#0a7a3d; --err:#b42318; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111; --fg:#eee; --sub:#aaa; --line:#333; --btn:#eee; --btnfg:#111; --ok:#4ade80; --err:#f87171; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,"Hiragino Sans",sans-serif; font-size:17px; line-height:1.6; }
+  main { max-width:560px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:8px 0 16px; }
+  .step { border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .step b { display:block; margin-bottom:6px; }
+  .sub { color:var(--sub); font-size:14px; }
+  pre { white-space:pre-wrap; word-break:break-all; margin:0; font-family:inherit; font-size:15px; }
+  input { width:100%; box-sizing:border-box; font-size:16px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--fg); }
+  button { width:100%; font-size:18px; padding:14px; margin-top:10px; border:0; border-radius:10px; background:var(--btn); color:var(--btnfg); font-weight:600; }
+  button.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); font-weight:400; font-size:16px; }
+  .msg { font-size:14px; margin-top:6px; min-height:1em; }
+  .ok { color:var(--ok); } .err { color:var(--err); }
+</style>
+</head>
+<body>
+<main>
+  <h1>ツリー（返信）で投稿</h1>
+
+  <div class="step">
+    <b>1. 返信先の投稿のリンクを貼る</b>
+    <div class="sub">Threadsで返信先の投稿（例：今日の①）の「共有」→「リンクをコピー」をして、下の欄を長押し→「ペースト」。</div>
+    <input id="url" type="url" inputmode="url" placeholder="https://www.threads.com/@…/post/…" autocomplete="off">
+    <div id="urlmsg" class="msg"></div>
+    <button id="go">ツリーで投稿する</button>
+  </div>
+
+  <div class="step">
+    <b>投稿する文</b>
+    <pre id="text"></pre>
+  </div>
+
+  <div class="step">
+    <b>うまく返信にならないとき</b>
+    <div class="sub">下のボタンで文をコピー → Threadsで返信先の投稿を開いて「返信」→ 長押しで「ペースト」。</div>
+    <button id="copy" class="ghost">文をコピーする</button>
+    <div id="copymsg" class="msg"></div>
+  </div>
+</main>
+<script>
+  var params = new URLSearchParams(location.search);
+  var text = params.get('text') || '';
+  document.getElementById('text').textContent = text || '（文がありません。Notionのリンクから開いてください）';
+
+  function shortcode(s) {
+    s = (s || '').trim();
+    var m = s.match(/\/post\/([A-Za-z0-9_-]+)/);
+    if (m) return m[1];
+    if (/^[A-Za-z0-9_-]{6,}$/.test(s)) return s;
+    return '';
+  }
+
+  document.getElementById('go').addEventListener('click', function () {
+    var msg = document.getElementById('urlmsg');
+    var code = shortcode(document.getElementById('url').value);
+    if (!text) { msg.className = 'msg err'; msg.textContent = '投稿する文がありません。'; return; }
+    if (!code) { msg.className = 'msg err'; msg.textContent = '返信先の投稿のリンクを貼ってください。'; return; }
+    msg.className = 'msg'; msg.textContent = '';
+    location.href = 'https://www.threads.com/intent/post?text=' + encodeURIComponent(text) +
+      '&reply_post_shortcode=' + encodeURIComponent(code);
+  });
+
+  document.getElementById('url').addEventListener('input', function () {
+    document.getElementById('urlmsg').textContent = '';
+  });
+
+  document.getElementById('copy').addEventListener('click', function () {
+    var msg = document.getElementById('copymsg');
+    function done() { msg.className = 'msg ok'; msg.textContent = 'コピーしました。Threadsで貼り付けてください。'; }
+    function fail() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'absolute'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      if (ok) done(); else { msg.className = 'msg err'; msg.textContent = 'コピーできませんでした。'; }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fail);
+    else fail();
+  });
+</script>
+</body>
+</html>
